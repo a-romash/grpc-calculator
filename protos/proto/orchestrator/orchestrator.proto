@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package orchestrator;
+
+option go_package = "./orchestrator";
+
+import "google/protobuf/empty.proto";
+
+// Orchestrator is service for managing agents
+service Orchestrator {
+    // Heardbeats whether agent is alive either not
+    rpc Heartbeat (IsAlive) returns (google.protobuf.Empty);
+    // Returns expression for evaluating by agent with id = IdAgent
+    rpc GetExpressionToEvaluate (IdAgent) returns (Expression);
+    // Agent gives result of solved expression back
+    rpc GiveResultOfExpression (ResultOfExpression) returns (google.protobuf.Empty);
+}
+ 
+message IsAlive {
+    bool is_alive = 1; // Indicates whether agent is alive
+    int32 id_agent = 2; // Id of agent
+}
+
+message IdAgent {
+    int32 id_agent = 1; // Id of agent
+}
+
+message Expression {
+    string id_expression = 1; // Id of expression
+    repeated RPNToken postfix_expression = 2; // Expression
+}
+
+message RPNToken {
+    int32 type = 1; // Type of token: operator or operand
+    string value = 2; // Value of token: int32 or string
+}
+
+message ResultOfExpression {
+    string id_expression = 1; //Id of expression
+    float result = 2;
+}

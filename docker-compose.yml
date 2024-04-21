@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management
+    hostname: rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=rmuser
+      - RABBITMQ_DEFAULT_PASS=rmpassword
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{default,error}]
+    ports:
+    - 8081:15672
+    - 5673:5672
+    volumes:
+      - ./rabbitmq:/var/lib/rabbitmq
+
+  # postgres:
+  #   container_name: postgresql
+  #   image: postgres
+  #   ports:
+  #     - 8082:5432
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: password
+  #     POSTGRES_DB: distributed_calculator
+  #   networks:
+  #     - app_network
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+
+  server:
+    container_name: orchestrator
+    build: 
+      context: .
+      dockerfile: ./server.Dockerfile
+    command: ./server
+    ports:
+      - 8080:8080
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+  
+  agent:
+    build: 
+      context: .
+      dockerfile: ./agent.Dockerfile
+    command: ./agent
+    restart: unless-stopped
+    depends_on:
+      - server
+
+
+volumes:
+  pgdata:
+
+networks:
+  app_network:
+    driver: bridge
