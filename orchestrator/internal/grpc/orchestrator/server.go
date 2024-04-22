@@ -26,7 +26,7 @@ type Orchestrator interface {
 	GetExpressionToEvaluate(
 		ctx context.Context,
 		id_agent int,
-	) (string, []shuntingYard.RPNToken, error)
+	) (string, []*shuntingYard.RPNToken, error)
 	SaveResultOfExpression(
 		ctx context.Context,
 		id_expression string,
@@ -54,7 +54,7 @@ func (s *serverAPI) Heartbeat(
 }
 
 // Converting shuntingYard.RPNToken -> orchestrator.RPNToken (proto)
-func tokensToPrototokens(tokens []shuntingYard.RPNToken) []*orchestrator.RPNToken {
+func tokensToPrototokens(tokens []*shuntingYard.RPNToken) []*orchestrator.RPNToken {
 	var prototokens []*orchestrator.RPNToken
 	for _, el := range tokens {
 		var token *orchestrator.RPNToken
