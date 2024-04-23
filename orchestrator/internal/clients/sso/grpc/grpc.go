@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/a-romash/grpc-calculator/protos/gen/go/sso"
+	"github.com/a-romash/protos/gen/go/sso"
 	"google.golang.org/grpc"
 )
 

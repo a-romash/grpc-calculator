@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	shuntingYard "github.com/a-romash/go-shunting-yard"
-	"github.com/a-romash/grpc-calculator/protos/gen/go/orchestrator"
+	"github.com/a-romash/protos/gen/go/orchestrator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

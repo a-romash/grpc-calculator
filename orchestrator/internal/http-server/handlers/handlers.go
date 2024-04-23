@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -15,11 +17,31 @@ type myRequest struct {
 	Id         string `json:"-"`
 }
 
-func MainPage(w http.ResponseWriter, r *http.Request) {
+type Handlers struct {
+	log     *slog.Logger
+	storage ExpressionStorage
+}
+
+type ExpressionStorage interface {
+	RegisterApp(
+		ctx context.Context,
+		name string,
+		secret string,
+	) (int64, error)
+}
+
+func New(log *slog.Logger, storage ExpressionStorage) *Handlers {
+	return &Handlers{
+		log:     log,
+		storage: storage,
+	}
+}
+
+func (h *Handlers) MainPage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Hello, use curl :)")
 }
 
-func GetExpressionById(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetExpressionById(w http.ResponseWriter, r *http.Request) {
 	_ = r.URL.Query().Get("id")
 
 	// logic getting expression from db
@@ -27,7 +49,7 @@ func GetExpressionById(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Expression doesn't exist")
 }
 
-func ExpressionHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) ExpressionHandler(w http.ResponseWriter, r *http.Request) {
 	expression := r.Context().Value("expression").(model.Expression)
 
 	// // Проверяем выражение на наличие результата в базе данных (в ином случае отправляем агенту на вычисление)
@@ -45,7 +67,7 @@ func ExpressionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // вообще по идее оно должно создаваться на фронтэнде, но т.к пока нет фронта - создаём на бэкенде (по запросу с фронта)
-func GetImpodenceKeyHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) GetImpodenceKeyHandler(w http.ResponseWriter, r *http.Request) {
 	// Парсим JSON
 	var request myRequest
 	err := json.NewDecoder(r.Body).Decode(&request)

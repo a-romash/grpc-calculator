@@ -1,5 +1,10 @@
 env: "local"
 storage_path: "./storage/sso.db"
 grpc:
-  port: 44044
+  port: 55055
   timeout: 5s
+http:
+  port: 8080
+grpc_client:
+  addr: "localhost:44044"
+  retries_count: 5

@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/a-romash/grpc-calculator/orchestrator/internal/http-server/handlers"
@@ -8,17 +9,19 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func New() *mux.Router {
+func New(log *slog.Logger, storage handlers.ExpressionStorage) *mux.Router {
 	serveMux := mux.NewRouter()
 
+	h := handlers.New(log, storage)
+
 	// Хэндлеры для запросов с сайта
-	serveMux.HandleFunc("/", handlers.MainPage)
-	serveMux.Handle("/expression", middleware.ValidateExpressionMiddleware(http.HandlerFunc(handlers.ExpressionHandler))).Methods("POST")
+	serveMux.HandleFunc("/", h.MainPage)
+	serveMux.Handle("/expression", middleware.ValidateExpressionMiddleware(http.HandlerFunc(h.ExpressionHandler))).Methods("POST")
 	serveMux.Handle("/agentstate", nil)
-	serveMux.HandleFunc("/expression", handlers.GetExpressionById).Methods("GET")
+	serveMux.HandleFunc("/expression", h.GetExpressionById).Methods("GET")
 
 	// Хэндлеры для API
-	serveMux.HandleFunc("/api/v1/getimpodencekey", handlers.GetImpodenceKeyHandler).Methods("POST")
+	serveMux.HandleFunc("/api/v1/getimpodencekey", h.GetImpodenceKeyHandler).Methods("POST")
 
 	http.Handle("/", serveMux)
 	return serveMux

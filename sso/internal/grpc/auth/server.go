@@ -3,7 +3,7 @@ package authgrpc
 import (
 	"context"
 
-	"github.com/a-romash/grpc-calculator/protos/gen/go/sso"
+	"github.com/a-romash/protos/gen/go/sso"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,7 +48,7 @@ func (s *serverAPI) Login(
 		return nil, status.Error(codes.InvalidArgument, "app_id is required")
 	}
 
-	token, err := s.auth.Login(ctx, in.Email, in.Password, in.GetAppId())
+	token, err := s.auth.Login(ctx, in.Email, in.Password, int(in.GetAppId()))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to login user")
 	}

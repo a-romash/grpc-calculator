@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	shuntingYard "github.com/a-romash/go-shunting-yard"
 	"github.com/a-romash/grpc-calculator/orchestrator/internal/domain/models"
@@ -19,10 +18,7 @@ type ExpressionStorage interface {
 	SaveExpression(
 		ctx context.Context,
 		expression string,
-		result float32,
-		created time.Time,
-		solved time.Time,
-	) error
+	) (string, error)
 	Heartbeat(
 		ctx context.Context,
 		id_agent int,

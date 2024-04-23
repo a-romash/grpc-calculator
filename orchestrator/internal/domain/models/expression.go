@@ -20,7 +20,6 @@ func Create(infinixExpression string, parsedExpression []*shuntingYard.RPNToken,
 	return Expression{
 		InfinixExpression: infinixExpression,
 		PostfixExpression: parsedExpression,
-		CreatedAt:         time.Now(),
 		IdExpression:      id,
 		Status:            Solving,
 	}

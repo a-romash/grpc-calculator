@@ -109,22 +109,6 @@ func (s *Storage) User(ctx context.Context, email string) (models.User, error) {
 	return user, nil
 }
 
-//func (s *Storage) SavePermission(ctx context.Context, userID int64, permission models.Permission, appID string) error {
-//	const op = "storage.sqlite.SavePermission"
-//
-//	stmt, err := s.db.Prepare("INSERT INTO permissions(user_id, permission, app_id) VALUES(?, ?, ?)")
-//	if err != nil {
-//		return fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	_, err = stmt.ExecContext(ctx, userID, permission, appID)
-//	if err != nil {
-//		return fmt.Errorf("%s: %w", op, err)
-//	}
-//
-//	return nil
-//}
-
 // App returns app by id.
 func (s *Storage) App(ctx context.Context, id int) (models.App, error) {
 	const op = "storage.sqlite.App"
