@@ -12,7 +12,7 @@ COPY go.* ./
 RUN go mod download
 
 # Build
-RUN GOOS=linux go build -o agent ./cmd/agent/main.go
+RUN GOOS=linux go build -o sso ./cmd/sso/main.go
 
 FROM alpine:3.18
 
@@ -20,4 +20,6 @@ WORKDIR /
 
 COPY --from=builder . .
 
-CMD ["./agent"]
+EXPOSE 44044
+
+CMD ["./sso"]

@@ -24,8 +24,8 @@ type UserStorage interface {
 		email string,
 		passHash []byte,
 	) (uid int64, err error)
-	User(ctx context.Context, email string) (models.User, error)
-	App(ctx context.Context, appId int) (models.App, error)
+	User(ctx context.Context, email string) (*models.User, error)
+	App(ctx context.Context, appId int) (*models.App, error)
 }
 
 func New(
