@@ -91,35 +91,22 @@ POST /api/v1/login {
 1) `cd <"path/to/project/root/directory">`
 2) `docker compose up -d` (`docker compose up -d --scale agent=X` <- если хотите несколько (X - количество) агентов на вычисление; без флага `-d` если хотите, чтобы выводились логи докера в консоль)
 
-# Пример (пока что не особо работает):
-POST `http://localhost:8080/expression`
-```json
-{
-    "expression": "((2*(3+4))/5)+(6-7)"
-}
-```
+# Примеры:
+Все примеры http запросов находятся в папке [/docs/examples](./docs/examples)
 
-GET `http://localhost:8080/expression?id=2_p_2_m_1`
-```json
-"id": "2_p_2_m_1",
-"expression": "2+2-1",
-"answer": "3",
-"status": "completed",
-"createdAt": "2024-02-18 20:23:54.361591737 +0000 UTC",
-"completedAt": "2024-02-18 20:23:59.376610678 +0000 UTC"
-```
+- [/docs/examples/registerUser.http](./docs/examples/registerUser.http) -> Пример запроса для регистрации пользователя
 
+- [/docs/examples/loginUser.http](./docs/examples/loginUser.http) -> Пример запроса для входа пользователя
 
-POST `http://localhost:8080/api/getimpodencekey`
-```json
-{
-    "expression": "2+2"
-}
-```
+- [/docs/examples/evaluateExpression.http](./docs/examples/evaluateExpression.http) -> Пример запроса на решение примера
 
-```
-"2_p_2"
-```
+- [/docs/examples/getAgentState.http](./docs/examples/getAgentState.http) -> Пример запроса на получение состояния всех демонов
+
+- [/docs/examples/getAllExpressions.http](./docs/examples/getAllExpressions.http) -> Пример запроса на получение всех решенных (и не только) примеров для определенного пользователя
+
+- [/docs/examples/getExpressionById.http](./docs/examples/getExpressionById.http) -> Пример запроса на получение выражения по его id
+
+- [/docs/examples/getImpodenceKey.http](./docs/examples/getImpodenceKey.http) -> Пример запроса на получение ключа имподентности (id выражения)
 ## Вы можете получить данную ошибку: 
 
 `Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:5673 -> 0.0.0.0:0: listen tcp 0.0.0.0:5673: bind: address already in use`
@@ -157,13 +144,9 @@ POST `http://localhost:8080/api/getimpodencekey`
 1) не должно быть никаких лишних символов
 2) скобочки должны стоять правильно
 
-# Схемки (пока не актуально)
+# Схемки
 
 ![Схема всего проекта](/docs/schema.png)
 
-![Схема всего проекта](/docs/rabbitmq.png)
-
-![Схема всего проекта](/docs/orchestrator.png)
-
 # Как связаться
-Мой телеграмм -> [тык](https://t.me/a_romashov)<p>
+### Мой телеграмм -> [тык](https://t.me/a_romashov)<p>

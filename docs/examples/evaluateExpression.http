@@ -1,0 +1,8 @@
+POST http://localhost:8080/expression HTTP/1.1
+
+Authorization: Bearer generated_jwt_token_after_login
+content-type: application/json
+
+{
+    "expression": "1+1-2"
+}

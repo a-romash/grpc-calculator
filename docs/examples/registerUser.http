@@ -1,0 +1,8 @@
+POST http://localhost:8080/register HTTP/1.1
+
+content-type: application/json
+
+{
+    "email": "example@mail.ru",
+    "password": "really_strong_password"
+}
