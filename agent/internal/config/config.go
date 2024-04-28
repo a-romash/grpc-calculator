@@ -9,27 +9,23 @@ import (
 )
 
 type Config struct {
-	Env         string           `yaml:"env"`
-	DatabaseUrl string           `yaml:"database_url"`
-	Secret      string           `yaml:"secret"`
-	GRPC        GRPCConfig       `yaml:"grpc"`
-	GRPCClient  GRPCClientConfig `yaml:"grpc_client"`
-	HTTP        HTTPConfig       `yaml:"http"`
-	TokenTTL    time.Duration    `yaml:"token_ttl"`
-}
-
-type GRPCConfig struct {
-	Port    int           `yaml:"port"`
-	Timeout time.Duration `yaml:"timeout"`
-}
-
-type HTTPConfig struct {
-	Port int `yaml:"port"`
+	Env        string           `yaml:"env"`
+	CountCalcs int              `yaml:"count_calculators"`
+	GRPCClient GRPCClientConfig `yaml:"grpc_client"`
+	Durations  DurationsConfig  `yaml:"durations"`
 }
 
 type GRPCClientConfig struct {
-	Addr         string `yaml:"sso_addr"`
+	Addr         string `yaml:"orch_addr"`
 	RetriesCount int    `yaml:"retries_count"`
+}
+
+type DurationsConfig struct {
+	Plus  time.Duration `yaml:"plus"`
+	Minus time.Duration `yaml:"minus"`
+	Mult  time.Duration `yaml:"mult"`
+	Del   time.Duration `yaml:"del"`
+	Pow   time.Duration `yaml:"pow"`
 }
 
 func MustLoad() *Config {

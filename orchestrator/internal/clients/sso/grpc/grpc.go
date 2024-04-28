@@ -7,7 +7,11 @@ import (
 	"time"
 
 	"github.com/a-romash/protos/gen/go/sso"
+	grpclog "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	grpcretry "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -26,18 +30,53 @@ func New(
 ) (*Client, error) {
 	const op = "grpc.New"
 
-	cc, err := grpc.DialContext(ctx, addr)
+	log = log.With(
+		slog.String("op", op),
+		slog.Int64("app_id", int64(app_id)),
+	)
+
+	log.Info("start creating client")
+
+	// Опции для интерсептора grpcretry
+	retryOpts := []grpcretry.CallOption{
+		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),
+		grpcretry.WithMax(uint(retriesCount)),
+		grpcretry.WithPerRetryTimeout(timeout),
+	}
+
+	// Опции для интерсептора grpclog
+	logOpts := []grpclog.Option{
+		grpclog.WithLogOnEvents(grpclog.PayloadReceived, grpclog.PayloadSent),
+	}
+
+	// Создаём соединение с gRPC-сервером SSO для клиента
+	cc, err := grpc.DialContext(ctx, addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(
+			grpclog.UnaryClientInterceptor(InterceptorLogger(log), logOpts...),
+			grpcretry.UnaryClientInterceptor(retryOpts...),
+		))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	grpcClient := sso.NewAuthClient(cc)
 
+	log.Info("client created succesfully")
+
 	return &Client{
 		api:    grpcClient,
 		log:    log,
 		app_id: app_id,
 	}, nil
+}
+
+// InterceptorLogger adapts slog logger to interceptor logger.
+// This code is simple enough to be copied and not imported.
+func InterceptorLogger(l *slog.Logger) grpclog.Logger {
+	return grpclog.LoggerFunc(func(ctx context.Context, lvl grpclog.Level, msg string, fields ...any) {
+		l.Log(ctx, slog.Level(lvl), msg, fields...)
+	})
 }
 
 func (c *Client) Register(
@@ -47,6 +86,12 @@ func (c *Client) Register(
 ) (int, error) {
 	const op = "grpc.Register"
 
+	log := c.log.With(
+		slog.String("op", op),
+	)
+
+	log.Info("start registering")
+
 	resp, err := c.api.Register(ctx, &sso.RegisterRequest{
 		Email:    email,
 		Password: password,
@@ -54,6 +99,8 @@ func (c *Client) Register(
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
+
+	log.Info("registering was succesful")
 
 	return int(resp.UserId), nil
 }

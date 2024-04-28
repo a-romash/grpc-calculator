@@ -1,23 +1,23 @@
 package agent
 
 import (
-	"calculator/internal/model"
 	"log"
 	"time"
 
 	shuntingYard "github.com/a-romash/go-shunting-yard"
+	"github.com/a-romash/grpc-calculator/agent/internal/domain/models"
 )
 
 type Calculator struct {
-	taskChan   chan *model.ExpressionPart
-	expression *model.ExpressionPart
+	taskChan   chan *models.ExpressionPart
+	expression *models.ExpressionPart
 	isBusy     bool
 	id         int
 }
 
 func NewCalculator(i int) *Calculator {
 	c := &Calculator{
-		taskChan: make(chan *model.ExpressionPart),
+		taskChan: make(chan *models.ExpressionPart),
 		isBusy:   false,
 		id:       i,
 	}
@@ -27,7 +27,7 @@ func NewCalculator(i int) *Calculator {
 	return c
 }
 
-func (c *Calculator) AddTask(task *model.ExpressionPart) bool {
+func (c *Calculator) AddTask(task *models.ExpressionPart) bool {
 	if c.isBusy {
 		return false
 	}
@@ -62,8 +62,8 @@ func (c *Calculator) Start() {
 	}()
 }
 
-func (c *Calculator) SolveExpression(expr *model.ExpressionPart) {
-	time.Sleep(time.Duration(expr.Duration) * time.Second)
+func (c *Calculator) SolveExpression(expr *models.ExpressionPart) {
+	time.Sleep(expr.Duration)
 
 	if result, err := shuntingYard.Evaluate([]*shuntingYard.RPNToken{expr.FirstOperand, expr.SecondOperand, expr.Operation}); err == nil {
 		tokenizedResult := shuntingYard.NewRPNOperandToken(result)

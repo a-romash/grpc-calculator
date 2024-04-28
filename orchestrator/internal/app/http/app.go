@@ -4,21 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
 
 	"github.com/a-romash/grpc-calculator/orchestrator/internal/clients/sso/grpc"
-	"github.com/a-romash/grpc-calculator/orchestrator/internal/http-server/handlers"
-	middleware "github.com/a-romash/grpc-calculator/orchestrator/internal/http-server/middlewares"
-	"github.com/a-romash/grpc-calculator/orchestrator/internal/http-server/routes"
-	"github.com/gorilla/mux"
+	"github.com/a-romash/grpc-calculator/orchestrator/internal/http-server/server"
+	httpservice "github.com/a-romash/grpc-calculator/orchestrator/internal/service/http"
 )
 
 type HTTPApp struct {
-	log        *slog.Logger
-	serveMux   *mux.Router
-	port       int
-	sso_client *grpc.Client
+	log    *slog.Logger
+	server *server.Server
 }
 
 func New(
@@ -26,26 +21,28 @@ func New(
 	port int,
 	addr string, // address of SSO-service
 	retriesCount int,
-	storage handlers.ExpressionStorage,
+	storage httpservice.ExpressionStorage,
 	secret string,
 ) *HTTPApp {
-	serveMux := routes.New(log, storage)
-
 	app_id, err := storage.RegisterApp(context.Background(), "Orchestrator", secret)
 	if err != nil {
+		log.Info("Error while registering App")
+		log.Error(err.Error())
 		return nil
 	}
 
 	client, err := grpc.New(context.Background(), log, addr, 5*time.Minute, retriesCount, int(app_id))
 	if err != nil {
+		log.Info("Error while registering grpc client")
+		log.Error(err.Error())
 		return nil
 	}
 
+	server := server.New(log, storage, port, secret, client)
+
 	return &HTTPApp{
-		log:        log,
-		serveMux:   serveMux,
-		port:       port,
-		sso_client: client,
+		log:    log,
+		server: server,
 	}
 }
 
@@ -58,15 +55,7 @@ func (a *HTTPApp) MustRun() {
 func (a *HTTPApp) Run() error {
 	const op = "httpapp.Run"
 
-	// Добавляем middleware для перехвата паник
-	muxWithPanicHandler := middleware.PanicMiddleware(a.serveMux)
-
-	server := http.Server{
-		Addr:    fmt.Sprintf(":%d", a.port),
-		Handler: muxWithPanicHandler,
-	}
-
-	if err := server.ListenAndServe(); err != nil {
+	if err := a.server.Run(); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil

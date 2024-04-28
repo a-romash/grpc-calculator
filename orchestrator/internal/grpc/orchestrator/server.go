@@ -2,7 +2,8 @@ package orchgrpc
 
 import (
 	"context"
-	"strconv"
+	"fmt"
+	"log/slog"
 
 	shuntingYard "github.com/a-romash/go-shunting-yard"
 	"github.com/a-romash/protos/gen/go/orchestrator"
@@ -31,6 +32,14 @@ type Orchestrator interface {
 		ctx context.Context,
 		id_expression string,
 		result float32,
+		idAgent int,
+	) error
+	RegisterNewAgent(
+		ctx context.Context,
+	) (int, error)
+	RemoveAgent(
+		ctx context.Context,
+		idAgent int,
 	) error
 }
 
@@ -64,10 +73,10 @@ func tokensToPrototokens(tokens []*shuntingYard.RPNToken) []*orchestrator.RPNTok
 				Type:  int32(el.Type),
 				Value: el.Value.(string),
 			}
-		case int:
+		case float64:
 			token = &orchestrator.RPNToken{
 				Type:  int32(el.Type),
-				Value: strconv.Itoa(el.Value.(int)),
+				Value: fmt.Sprintf("%.6f", el.Value.(float64)),
 			}
 		}
 		prototokens = append(prototokens, token)
@@ -86,6 +95,7 @@ func (s *serverAPI) GetExpressionToEvaluate(
 
 	id_expression, tokens, err := s.orch.GetExpressionToEvaluate(ctx, int(in.IdAgent))
 	if err != nil {
+		fmt.Print(err.Error())
 		return nil, status.Error(codes.Internal, "some problems with getting expressions")
 	}
 
@@ -103,14 +113,34 @@ func (s *serverAPI) GiveResultOfExpression(
 		return nil, status.Error(codes.InvalidArgument, "id_expression is required")
 	}
 
-	if in.GetResult() == 0 {
-		return nil, status.Error(codes.InvalidArgument, "result is required")
-	}
-
-	err := s.orch.SaveResultOfExpression(ctx, in.IdExpression, in.Result)
+	err := s.orch.SaveResultOfExpression(ctx, in.IdExpression, in.Result, int(in.IdAgent))
 	if err != nil {
 		return nil, status.Error(codes.Internal, "some problem with saving")
 	}
 
+	return &emptypb.Empty{}, nil
+}
+
+func (s *serverAPI) RegisterNewAgent(
+	ctx context.Context,
+	in *emptypb.Empty,
+) (*orchestrator.IdAgent, error) {
+	fmt.Println("it works")
+	id, err := s.orch.RegisterNewAgent(ctx)
+
+	return &orchestrator.IdAgent{
+		IdAgent: int32(id),
+	}, err
+}
+
+func (s *serverAPI) RemoveAgent(
+	ctx context.Context,
+	in *orchestrator.IdAgent,
+) (*emptypb.Empty, error) {
+	err := s.orch.RemoveAgent(ctx, int(in.IdAgent))
+	if err != nil {
+		slog.Error(err.Error())
+		return nil, status.Error(codes.Internal, "some problem with removing")
+	}
 	return &emptypb.Empty{}, nil
 }

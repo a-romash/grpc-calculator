@@ -15,10 +15,6 @@ type Orchestrator struct {
 }
 
 type ExpressionStorage interface {
-	SaveExpression(
-		ctx context.Context,
-		expression string,
-	) (string, error)
 	Heartbeat(
 		ctx context.Context,
 		id_agent int,
@@ -35,7 +31,11 @@ type ExpressionStorage interface {
 		ctx context.Context,
 		id_expression string,
 		result float32,
+		idAgent int,
 	) error
+	RegisterNewAgent(
+		ctx context.Context,
+	) (int, error)
 }
 
 func New(
@@ -48,7 +48,6 @@ func New(
 	}
 }
 
-// TODO: сделать
 func (o *Orchestrator) Heartbeat(
 	ctx context.Context,
 	is_alive bool,
@@ -79,6 +78,7 @@ func (o *Orchestrator) GetExpressionToEvaluate(
 
 	expression, err := o.storage.GetExpressionToEvaluate(ctx, id_agent)
 	if err != nil {
+		o.log.Error(err.Error())
 		return "", []*shuntingYard.RPNToken{}, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -89,11 +89,49 @@ func (o *Orchestrator) SaveResultOfExpression(
 	ctx context.Context,
 	id_expression string,
 	result float32,
+	idAgent int,
 ) error {
 	const op = "Orch.SaveResult"
 
-	if err := o.storage.SaveResult(ctx, id_expression, result); err != nil {
+	if err := o.storage.SaveResult(ctx, id_expression, result, idAgent); err != nil {
+		o.log.Error(err.Error() + ". op: " + op)
 		return fmt.Errorf("%s: %w", op, err)
 	}
+	return nil
+}
+
+func (o *Orchestrator) RegisterNewAgent(ctx context.Context) (int, error) {
+	const op = "Orch.RegisterNewAgent"
+
+	log := o.log.With(
+		slog.String("op", op),
+	)
+
+	log.Info("start registering")
+	id, err := o.storage.RegisterNewAgent(ctx)
+	if err != nil {
+		log.Error("caused error: " + err.Error())
+		return -1, fmt.Errorf("%s: %w", op, err)
+	}
+
+	log.Info("registering was succesful!")
+	return id, nil
+}
+
+func (o *Orchestrator) RemoveAgent(ctx context.Context, idAgent int) error {
+	const op = "Orch.RemoveAgent"
+
+	log := o.log.With(
+		slog.String("op", op),
+	)
+
+	log.Info("start removing")
+
+	err := o.storage.RemoveAgent(ctx, idAgent)
+	if err != nil {
+		log.Error("caused error: " + err.Error())
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	log.Info("removing was succesful!")
 	return nil
 }

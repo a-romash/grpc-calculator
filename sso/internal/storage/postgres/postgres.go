@@ -115,39 +115,32 @@ func (db *Postgresql) SaveUser(ctx context.Context, email string, passHash []byt
 
 	const sql = `
 	INSERT INTO users (email, pass_hash)
-  	VALUES ($1, $2);
+  	VALUES ($1, $2)
+	RETURNING id;
 	`
 
-	_, err := db.pool.Exec(ctx, sql, email, passHash)
+	var id int
+
+	row := db.pool.QueryRow(ctx, sql, email, passHash)
+	err := row.Scan(&id)
 	if err != nil {
 		return -1, fmt.Errorf("%s: %w", op, err)
 	}
-
-	const sql2 = `
-	SELECT (id) FROM users
-	WHERE email = $1;
-	`
-	rows, _ := db.pool.Query(ctx, sql2, email)
-	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return -1, err
-	} else if err != nil {
-		return -1, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return int64(user.ID), nil
+	return int64(id), nil
 }
 
 func (db *Postgresql) User(ctx context.Context, email string) (*models.User, error) {
 	const op = "storage.postgres.User"
 
 	const sql string = `
-	SELECT (id, email, pass_hash) FROM users
+	SELECT * FROM users
 	WHERE email = $1;
 	`
 
-	rows, _ := db.pool.Query(ctx, sql, email)
-	user, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.User])
+	var user models.User
+
+	row := db.pool.QueryRow(ctx, sql, email)
+	err := row.Scan(&user.ID, &user.Email, &user.Password)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	} else if err != nil {
@@ -160,7 +153,7 @@ func (db *Postgresql) App(ctx context.Context, id int) (*models.App, error) {
 	const op = "storage.postgres.App"
 
 	const sql string = `
-	SELECT (id, name, secret) FROM apps
+	SELECT * FROM apps
 	WHERE id = $1;
 	`
 

@@ -7,7 +7,7 @@ import (
 	grpcapp "github.com/a-romash/grpc-calculator/orchestrator/internal/app/grpc"
 	httpapp "github.com/a-romash/grpc-calculator/orchestrator/internal/app/http"
 	orch "github.com/a-romash/grpc-calculator/orchestrator/internal/service/orchestrator"
-	"github.com/a-romash/grpc-calculator/orchestrator/internal/storage/sqlite"
+	"github.com/a-romash/grpc-calculator/orchestrator/internal/storage/postgres"
 )
 
 type App struct {
@@ -15,12 +15,7 @@ type App struct {
 	HTTPServer *httpapp.HTTPApp
 }
 
-func New(log *slog.Logger, grpcPort int, storagePath string, tokenTTL time.Duration, httpPort int, addr string, retriesCount int, secret string) *App {
-	storage, err := sqlite.New(storagePath)
-	if err != nil {
-		panic(err)
-	}
-
+func New(log *slog.Logger, grpcPort int, storage *postgres.Postgresql, tokenTTL time.Duration, httpPort int, addr string, retriesCount int, secret string) *App {
 	orchService := orch.New(log, storage)
 
 	grpcApp := grpcapp.New(log, orchService, grpcPort)
@@ -30,14 +25,4 @@ func New(log *slog.Logger, grpcPort int, storagePath string, tokenTTL time.Durat
 		GRPCServer: grpcApp,
 		HTTPServer: httpApp,
 	}
-}
-
-func (a *App) Run() {
-	go func() {
-		a.GRPCServer.Run()
-	}()
-
-	go func() {
-		a.HTTPServer.Run()
-	}()
 }

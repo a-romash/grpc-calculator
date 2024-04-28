@@ -1,0 +1,11 @@
+env: "local"
+count_calculators: 10
+grpc_client:
+  orch_addr: "orchestrator:44045"
+  retries_count: 5
+durations:
+  plus: 1s
+  minus: 1s
+  mult: 1s
+  del: 1s
+  pow: 1s

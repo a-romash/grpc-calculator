@@ -9,6 +9,7 @@ import (
 	"github.com/a-romash/grpc-calculator/orchestrator/internal/app"
 	"github.com/a-romash/grpc-calculator/orchestrator/internal/config"
 	"github.com/a-romash/grpc-calculator/orchestrator/internal/lib/logger/handlers/slogpretty"
+	"github.com/a-romash/grpc-calculator/orchestrator/internal/storage/postgres"
 )
 
 const (
@@ -22,9 +23,21 @@ func main() {
 
 	log := setupLogger(cfg.Env)
 
-	application := app.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL, cfg.HTTP.Port, cfg.GRPCClient.Addr, cfg.GRPCClient.RetriesCount, cfg.Secret)
+	storage, err := postgres.Connect(cfg.DatabaseUrl)
+	if err != nil {
+		panic(err)
+	}
 
-	application.Run()
+	application := app.New(log, cfg.GRPC.Port, storage, cfg.TokenTTL, cfg.HTTP.Port, cfg.GRPCClient.Addr, cfg.GRPCClient.RetriesCount, cfg.Secret)
+	if application.HTTPServer == nil {
+		panic("httpserver is nil!!1!")
+	}
+	go func() {
+		application.HTTPServer.MustRun()
+	}()
+	go func() {
+		application.GRPCServer.MustRun()
+	}()
 
 	// Graceful stop
 

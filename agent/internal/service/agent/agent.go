@@ -1,23 +1,23 @@
 package agent
 
 import (
-	"calculator/internal/model"
-	"calculator/pkg/config"
 	"log"
 	"sync"
 	"time"
 
 	shuntingYard "github.com/a-romash/go-shunting-yard"
+	"github.com/a-romash/grpc-calculator/agent/internal/domain/models"
 )
 
 type Agent struct {
 	mu          sync.Mutex
 	Calculators []*Calculator
-	Queue       chan *model.ExpressionPart
+	Queue       chan *models.ExpressionPart
+	Durations   map[string]time.Duration
 }
 
-func NewAgent(countCalculators int) *Agent {
-	queue := make(chan *model.ExpressionPart)
+func New(countCalculators int, durations map[string]time.Duration) *Agent {
+	queue := make(chan *models.ExpressionPart)
 	miniCalcs := make([]*Calculator, countCalculators)
 
 	for i := 0; i < countCalculators; i++ {
@@ -27,6 +27,7 @@ func NewAgent(countCalculators int) *Agent {
 	a := &Agent{
 		Calculators: miniCalcs,
 		Queue:       queue,
+		Durations:   durations,
 	}
 
 	go a.distributeTasks()
@@ -34,7 +35,7 @@ func NewAgent(countCalculators int) *Agent {
 	return a
 }
 
-func (a *Agent) AddTask(exp *model.ExpressionPart) {
+func (a *Agent) AddTask(exp *models.ExpressionPart) {
 	a.mu.Lock()
 	a.Queue <- exp
 	a.mu.Unlock()
@@ -61,11 +62,14 @@ func (a *Agent) distributeTasks() {
 	}
 }
 
-func (a *Agent) SolveExpression(exp *model.Expression) {
+func (a *Agent) SolveExpression(exp *models.Expression) {
 	stack := make([]*shuntingYard.RPNToken, 0)
 
+	// fmt.Println(exp.PostfixExpression)
+
 	for _, token := range exp.PostfixExpression {
-		if token.Type == model.Operand {
+		// fmt.Println(stack)
+		if token.Type == models.Operand {
 			stack = append(stack, token)
 			continue
 		}
@@ -78,25 +82,27 @@ func (a *Agent) SolveExpression(exp *model.Expression) {
 		num1 := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 
-		duration := GetOperationDuration(token.Value.(string))
+		duration := a.GetOperationDuration(token.Value.(string))
 
-		exprPart := model.NewExpressionPart(num1, num2, token, exp.IdExpression, duration)
+		exprPart := models.NewExpressionPart(num1, num2, token, exp.IdExpression, duration)
 		a.AddTask(exprPart)
 
 		stack = append(stack, <-exprPart.Result)
 		close(exprPart.Result)
 	}
+	// fmt.Print("123")
+	// result, _ := shuntingYard.Evaluate(exp.PostfixExpression)
 
 	setResultsToExpression(exp, stack[0].Value.(float64))
 }
 
-func setResultsToExpression(exp *model.Expression, result float64) {
+func setResultsToExpression(exp *models.Expression, result float64) {
 	exp.Result = result
-	exp.Status = model.Solved
+	exp.Status = models.Solved
 	timeCompleted := time.Now()
 	exp.SolvedAt = timeCompleted
 }
 
-func GetOperationDuration(operation string) int {
-	return config.Config.AgentResolveTime[operation]
+func (a *Agent) GetOperationDuration(operation string) time.Duration {
+	return a.Durations[operation]
 }

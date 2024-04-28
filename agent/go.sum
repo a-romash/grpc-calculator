@@ -4,6 +4,10 @@ github.com/a-romash/go-shunting-yard v0.0.0-20240416170645-a0e20ad914c0 h1:VmE76
 github.com/a-romash/go-shunting-yard v0.0.0-20240416170645-a0e20ad914c0/go.mod h1:vhRmyyM0Bj8c0+YpCG6UB86+y5K0MP7K6tM4N3648Tc=
 github.com/a-romash/protos v0.0.0-20240424153756-8f6276e887a9 h1:nwGoYjbLeDalVEz9FhjORFJEzQa+4p1vJnJzJ45sdnU=
 github.com/a-romash/protos v0.0.0-20240424153756-8f6276e887a9/go.mod h1:cy0Ngh3WjIN82AjnKRcf5/ZaxTUgslnlb4cQy+3aw0I=
+github.com/a-romash/protos v0.0.0-20240427234958-9fa3a880a9d0 h1:zgSaid+KJHsp0vYP/zmwuJ/EBsFpviKNffUGL+dnbU8=
+github.com/a-romash/protos v0.0.0-20240427234958-9fa3a880a9d0/go.mod h1:cy0Ngh3WjIN82AjnKRcf5/ZaxTUgslnlb4cQy+3aw0I=
+github.com/a-romash/protos v0.0.0-20240427235838-d22b5aa9dbe4 h1:Ck/Pb4T4B9WOeyxRIfduyeSbM/ZsTV/ug5QR2JCMfF8=
+github.com/a-romash/protos v0.0.0-20240427235838-d22b5aa9dbe4/go.mod h1:cy0Ngh3WjIN82AjnKRcf5/ZaxTUgslnlb4cQy+3aw0I=
 github.com/fatih/color v1.16.0 h1:zmkK9Ngbjj+K0yRhTVONQh1p/HknKYSlNT+vZCzyokM=
 github.com/fatih/color v1.16.0/go.mod h1:fL2Sau1YI5c0pdGEVCbKQbLXB6edEj1ZgiY4NijnWvE=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=

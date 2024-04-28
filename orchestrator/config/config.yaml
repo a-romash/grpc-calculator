@@ -1,10 +1,11 @@
 env: "local"
-storage_path: "./storage/sso.db"
+database_url: "postgresql://postgres:password@postgresql:5432/database"
+secret: "really_secret_key_35072c1ae546350e0bfa7ab11d49dc6f129e72ccd57ec7eb671225bbd197c8f1"
 grpc:
-  port: 55055
+  port: 44045
   timeout: 5s
 http:
   port: 8080
 grpc_client:
-  addr: "localhost:44044"
+  sso_addr: "sso:44044"
   retries_count: 5

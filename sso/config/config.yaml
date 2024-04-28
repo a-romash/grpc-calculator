@@ -1,5 +1,6 @@
 env: "local"
 database_url: "postgresql://postgres:password@postgresql:5432/database"
+token_ttl: 86400s
 grpc:
   port: 44044
   timeout: 5s

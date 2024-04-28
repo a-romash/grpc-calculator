@@ -2,8 +2,10 @@ package authgrpc
 
 import (
 	"context"
+	"errors"
 
 	"github.com/a-romash/protos/gen/go/sso"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -49,6 +51,9 @@ func (s *serverAPI) Login(
 	}
 
 	token, err := s.auth.Login(ctx, in.Email, in.Password, int(in.GetAppId()))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, status.Error(codes.NotFound, "user not found")
+	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to login user")
 	}
@@ -68,6 +73,9 @@ func (s *serverAPI) Register(
 	}
 
 	userID, err := s.auth.RegisterNewUser(ctx, in.Email, in.Password)
+	if errors.Is(err, errors.New("user exists")) {
+		return nil, status.Error(codes.AlreadyExists, "user already exists")
+	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to register user")
 	}

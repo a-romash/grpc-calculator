@@ -96,7 +96,8 @@ func Init(p *pgxpool.Pool) (err error) {
 	const sql string = `
 	CREATE TABLE IF NOT EXISTS expressions(
 		id VARCHAR(255) PRIMARY KEY UNIQUE,
-		expression VARCHAR(255) NOT NULL UNIQUE,
+		expression VARCHAR(255) NOT NULL,
+		uid SERIAL NOT NULL REFERENCES users(id),
 		result FLOAT,
 		created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		solved_at TIMESTAMP,
@@ -111,8 +112,14 @@ func Init(p *pgxpool.Pool) (err error) {
 
 	CREATE TABLE IF NOT EXISTS apps(
 		id SERIAL PRIMARY KEY,
-		name VARCHAR(255) NOT NULL,
-		secret VARCHAR(255) NOT NULL 
+		name VARCHAR(255) NOT NULL UNIQUE,
+		secret VARCHAR(255) NOT NULL
+	);
+
+	CREATE TABLE IF NOT EXISTS users(
+		id SERIAL PRIMARY KEY,
+		email VARCHAR(255) NOT NULL UNIQUE,
+		pass_hash BYTEA NOT NULL
 	);
 	`
 
@@ -125,28 +132,29 @@ func (db *Postgresql) RegisterApp(ctx context.Context, name, secret string) (int
 	const op = "storage.postgres.RegisterApp"
 
 	const sql string = `
-	INSERT INTO apps (name, secret)
-	VALUES ($1, $2)
+	DELETE FROM apps
+	WHERE name = $1;
 	`
 
-	_, err := db.pool.Exec(ctx, sql, name, secret)
+	_, err := db.pool.Exec(ctx, sql, name)
 	if err != nil {
 		return -1, fmt.Errorf("%s: %w", op, err)
 	}
 
-	const sql2 = `
-	SELECT (id) FROM apps
-	WHERE name = $1;
+	const sql2 string = `
+	INSERT INTO apps (name, secret)
+	VALUES ($1, $2)
+	RETURNING id; 
 	`
-	rows, _ := db.pool.Query(ctx, sql2, name)
-	app, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[models.App])
-	if errors.Is(err, pgx.ErrNoRows) {
-		return -1, err
-	} else if err != nil {
+
+	var id int64
+
+	row := db.pool.QueryRow(ctx, sql2, name, secret)
+	err = row.Scan(&id)
+	if err != nil {
 		return -1, fmt.Errorf("%s: %w", op, err)
 	}
-
-	return int64(app.ID), nil
+	return id, nil
 }
 
 // Heartbeat updates last_heartbet of agent
@@ -181,37 +189,57 @@ func (db *Postgresql) RemoveAgent(ctx context.Context, id_agent int) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	const sql2 = `
+	UPDATE expressions
+	SET status = 'new'
+	WHERE status = $1;
+	`
+
+	_, err = db.pool.Exec(ctx, sql2, fmt.Sprintf("solving-%d", id_agent))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	return nil
 }
 
 // SaveExpression saves expression to db and returns id of expression.
-func (db *Postgresql) SaveExpression(ctx context.Context, expression string) (string, error) {
+func (db *Postgresql) SaveExpression(ctx context.Context, expression *models.Expression, uid int) (string, error) {
 	const op = "storage.postgres.SaveExpression"
 
 	const sql = `
-	INSERT INTO expressions (id, expression)
-	VALUES ($1, $2);
+	INSERT INTO expressions (id, expression, uid)
+	VALUES ($1, $2, $3);
 	`
 
-	id := expressionparser.CreateImpodenceKey(expression)
-
-	_, err := db.pool.Exec(ctx, sql, id, expression)
+	_, err := db.pool.Exec(ctx, sql, expression.IdExpression, expression.InfinixExpression, uid)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	return id, nil
+	return expression.IdExpression, nil
 }
 
 // SaveResult saves result of expression
-func (db *Postgresql) SaveResult(ctx context.Context, idExpression string, result float32) error {
+func (db *Postgresql) SaveResult(ctx context.Context, idExpression string, result float32, idAgent int) error {
 	const op = "storage.postgres.SaveResult"
 
 	const sql = `
 	UPDATE expressions
-	SET result=$1
+	SET result=$1, status='solved', solved_at=CURRENT_TIMESTAMP
 	WHERE id=$2;
 	`
 	_, err := db.pool.Exec(ctx, sql, result, idExpression)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	const sql2 = `
+	UPDATE agents
+	SET status = 'free'
+	WHERE id = $1;
+	`
+
+	_, err = db.pool.Exec(ctx, sql2, idAgent)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -227,7 +255,7 @@ func (db *Postgresql) GetExpressionToEvaluate(ctx context.Context, id_agent int)
 	WHERE status = 'new';
 	`
 
-	row := db.pool.QueryRow(ctx, sql, id_agent)
+	row := db.pool.QueryRow(ctx, sql)
 	var id, expression string
 
 	err := row.Scan(&id, &expression)
@@ -242,7 +270,7 @@ func (db *Postgresql) GetExpressionToEvaluate(ctx context.Context, id_agent int)
 		const sql3 = `
 		UPDATE expressions
 		SET status='invalid'
-		WHERE id=$2
+		WHERE id=$2;
 		`
 		_, err = db.pool.Exec(ctx, sql3, fmt.Sprintf("solving-%d", id_agent), id)
 		if err != nil {
@@ -257,10 +285,21 @@ func (db *Postgresql) GetExpressionToEvaluate(ctx context.Context, id_agent int)
 	const sql2 = `
 	UPDATE expressions
 	SET status=$1
-	WHERE id=$2
+	WHERE id=$2;
 	`
 
 	_, err = db.pool.Exec(ctx, sql2, fmt.Sprintf("solving-%d", id_agent), id)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	const sql3 = `
+	UPDATE agents
+	SET status=$1
+	WHERE id=$2;
+	`
+
+	_, err = db.pool.Exec(ctx, sql3, fmt.Sprintf("solving-%s", id), id_agent)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -288,26 +327,86 @@ func (db *Postgresql) RegisterNewAgent(ctx context.Context) (int, error) {
 	return id, nil
 }
 
-// App returns app by id.
-// func (s *Storage) App(ctx context.Context, id int) (models.App, error) {
-// 	const op = "storage.sqlite.App"
+// GetAllAgent returns all agents from database
+func (db *Postgresql) GetAllAgent(ctx context.Context) ([]models.Agent, error) {
+	const op = "storage.postgres.GetAllAgent"
 
-// 	stmt, err := s.db.Prepare("SELECT id, name, secret FROM apps WHERE id = ?")
-// 	if err != nil {
-// 		return models.App{}, fmt.Errorf("%s: %w", op, err)
-// 	}
+	const sql string = `
+	SELECT * FROM agents;
+	`
 
-// 	row := stmt.QueryRowContext(ctx, id)
+	rows, err := db.pool.Query(ctx, sql)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 
-// 	var app models.App
-// 	err = row.Scan(&app.ID, &app.Name, &app.Secret)
-// 	if err != nil {
-// 		if errors.Is(err, sql.ErrNoRows) {
-// 			return models.App{}, fmt.Errorf("%s: %w", op, storage.ErrAppNotFound)
-// 		}
+	agents, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.Agent])
+	if err != nil {
+		return nil, err
+	}
+	return agents, nil
+}
 
-// 		return models.App{}, fmt.Errorf("%s: %w", op, err)
-// 	}
+// GetExpressionsForUser returns all expressions (solved and not) for exactly user
+func (db *Postgresql) GetExpressionsForUser(ctx context.Context, uid int) ([]models.Expression, error) {
+	const op = "storage.postgres.GetExpressionsForUser"
 
-// 	return app, nil
-// }
+	const sql = `
+	SELECT * FROM expressions
+	WHERE uid = $1;
+	`
+
+	rows, err := db.pool.Query(ctx, sql, uid)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	expressions, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.Expression])
+	if err != nil {
+		return nil, err
+	}
+	return expressions, nil
+}
+
+func (db *Postgresql) GetExpressionById(ctx context.Context, id string, uid int) (*models.Expression, error) {
+	const op = "storage.postgres.GetExpressionById"
+
+	const sql = `
+	SELECT * FROM expressions
+	WHERE id = $1 AND uid = $2;
+	`
+
+	rows, err := db.pool.Query(ctx, sql, id, uid)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	expressions, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.Expression])
+	if err != nil {
+		return nil, err
+	}
+	if len(expressions) == 0 {
+		return nil, pgx.ErrNoRows
+	}
+	expression := &expressions[0]
+	return expression, nil
+}
+
+// GetResultOfExpression returns result of exactly expression
+func (db *Postgresql) GetResultOfExpression(ctx context.Context, id string) (float32, error) {
+	const op = "storage.postgres.GetResultOfExpression"
+
+	const sql = `
+	SELECT (result) FROM expressions
+	WHERE id = $1 AND status = 'solved';
+	`
+
+	row := db.pool.QueryRow(ctx, sql, id)
+
+	var result float32
+	err := row.Scan(&result)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return result, nil
+}
